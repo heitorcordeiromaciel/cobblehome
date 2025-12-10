@@ -1,7 +1,7 @@
-# Compiled class file
+# Compiled class files
 *.class
 
-# Log file
+# Log files
 *.log
 
 # BlueJ files
@@ -10,8 +10,9 @@
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
 
-# Package Files #
+# Package Files (keep gradle-wrapper.jar)
 *.jar
+!gradle/wrapper/gradle-wrapper.jar
 *.war
 *.nar
 *.ear
@@ -19,9 +20,81 @@
 *.tar.gz
 *.rar
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+# Virtual machine crash logs
 hs_err_pid*
 replay_pid*
 
-# Kotlin Gradle plugin data, see https://kotlinlang.org/docs/whatsnew20.html#new-directory-for-kotlin-data-in-gradle-projects
+# Kotlin
 .kotlin/
+kotlin-ic/
+
+# ===== Gradle =====
+.gradle/
+build/
+out/
+bin/
+
+# ===== IDE Files =====
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Eclipse
+.classpath
+.project
+.settings/
+*.launch
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# NetBeans
+nbproject/
+nbbuild/
+nbdist/
+.nb-gradle/
+
+# ===== Minecraft/NeoForge Runtime =====
+# Run directories (created when testing the mod)
+run/
+runs/
+logs/
+
+# Loom cache
+.cache/
+remappedSrc/
+
+# Minecraft server files
+server.properties
+eula.txt
+banned-ips.json
+banned-players.json
+ops.json
+usercache.json
+usernamecache.json
+whitelist.json
+
+# ===== OS Files =====
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+.directory
+
+# ===== Misc =====
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~.nib
