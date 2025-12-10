@@ -1,5 +1,5 @@
-modLoader = "javafml"
-loaderVersion = "[1.21.1,)"
+modLoader = "kotlinforforge"
+loaderVersion = "[5,)"
 #issueTrackerURL = "A valid URL to your issue tracker where people can open bug tickets"
 license = "MIT License"
 
