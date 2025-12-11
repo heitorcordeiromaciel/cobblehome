@@ -1,40 +1,49 @@
 package io.github.heitorcordeiromaciel
 
-import com.cobblemon.mod.common.api.pokemon.PokemonSpecies
-import net.minecraft.commands.Commands
-import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.Style
-import net.minecraft.resources.ResourceLocation
+import com.cobblemon.mod.common.Cobblemon
+import io.github.heitorcordeiromaciel.commands.CobbleHomeCommand
+import io.github.heitorcordeiromaciel.storage.HomeStorageManager
+import io.github.heitorcordeiromaciel.ui.MenuRegistry
 import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.common.Mod
+import net.neoforged.fml.loading.FMLPaths
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.RegisterCommandsEvent
+import net.neoforged.neoforge.event.server.ServerStartedEvent
+import net.neoforged.neoforge.event.server.ServerStoppingEvent
+import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 
 @Mod("cobblehome_neoforge")
 class Cobblehome {
 
-    init {
-        NeoForge.EVENT_BUS.register(this)
-    }
+  init {
+    // Register to NeoForge event bus
+    NeoForge.EVENT_BUS.register(this)
 
-    @SubscribeEvent
-    fun onCommandRegistration(event: RegisterCommandsEvent) {
-        event.dispatcher.register(
-                Commands.literal("test").executes { context ->
-                    val speciesId = ResourceLocation.tryParse("cobblemon:bidoof")
+    // Register menu types to mod event bus
+    MenuRegistry.MENU_TYPES.register(MOD_BUS)
 
-                    if (speciesId != null) {
-                        val species = PokemonSpecies.getByIdentifier(speciesId)
+    Cobblemon.LOGGER.info("CobbleHome initialized")
+  }
 
-                        context.source.sendSystemMessage(
-                                Component.literal("Got species: ")
-                                        .withStyle(Style.EMPTY.withColor(0x03e3fc))
-                                        .append(species?.translatedName)
-                        )
-                    }
+  @SubscribeEvent
+  fun onServerStarted(event: ServerStartedEvent) {
+    // Initialize storage manager when server starts
+    val configDir = FMLPaths.CONFIGDIR.get().toFile()
+    HomeStorageManager.initialize(configDir)
+    Cobblemon.LOGGER.info("CobbleHome storage manager initialized")
+  }
 
-                    0
-                }
-        )
-    }
+  @SubscribeEvent
+  fun onServerStopping(event: ServerStoppingEvent) {
+    // Save and shutdown storage manager when server stops
+    HomeStorageManager.shutdown()
+    Cobblemon.LOGGER.info("CobbleHome storage manager shut down")
+  }
+
+  @SubscribeEvent
+  fun onCommandRegistration(event: RegisterCommandsEvent) {
+    CobbleHomeCommand.register(event.dispatcher)
+    Cobblemon.LOGGER.info("CobbleHome commands registered")
+  }
 }

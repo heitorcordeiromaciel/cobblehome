@@ -5,6 +5,10 @@ plugins {
     kotlin("jvm") version("2.2.0")
 }
 
+kotlin {
+    jvmToolchain(21)
+}
+
 
 group = "it.github.heitorcordeiromaciel"
 version = "1.0-SNAPSHOT"
