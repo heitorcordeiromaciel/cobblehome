@@ -1,29 +1,52 @@
 package io.github.heitorcordeiromaciel.storage
 
 import com.cobblemon.mod.common.Cobblemon
+import com.cobblemon.mod.common.pokemon.Pokemon
 import java.io.File
 import java.io.IOException
 import java.util.UUID
+import net.minecraft.client.Minecraft
 import net.minecraft.nbt.CompoundTag
+import net.minecraft.nbt.NbtAccounter
 import net.minecraft.nbt.NbtIo
-import net.minecraft.server.level.ServerPlayer
+import net.neoforged.api.distmarker.Dist
+import net.neoforged.api.distmarker.OnlyIn
+import net.neoforged.bus.api.SubscribeEvent
+import net.neoforged.fml.common.EventBusSubscriber
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent
 
 /**
- * Manages the persistence of HomeStore to disk. Stores data in
+ * CLIENT-SIDE storage manager for CobbleHome. Stores Pokémon in client's
  * .minecraft/config/cobblehome/home_storage.dat
  */
+@OnlyIn(Dist.CLIENT)
+@EventBusSubscriber(modid = "cobblehome_neoforge", value = [Dist.CLIENT])
 object HomeStorageManager {
 
     private lateinit var homeStore: HomeStore
     private lateinit var storageFile: File
     private var initialized = false
 
+    /** Initialize on client login */
+    @SubscribeEvent
+    fun onClientLogin(event: ClientPlayerNetworkEvent.LoggingIn) {
+        initialize()
+    }
+
+    /** Save and shutdown on client logout */
+    @SubscribeEvent
+    fun onClientLogout(event: ClientPlayerNetworkEvent.LoggingOut) {
+        save()
+    }
+
     /** Initializes the storage manager and loads existing data */
-    fun initialize(configDir: File) {
+    fun initialize() {
         if (initialized) return
 
-        // Create config directory
+        // Get client's config directory
+        val configDir = File(Minecraft.getInstance().gameDirectory, "config")
         val cobblehomeDir = File(configDir, "cobblehome")
+
         if (!cobblehomeDir.exists()) {
             cobblehomeDir.mkdirs()
         }
@@ -40,15 +63,40 @@ object HomeStorageManager {
                 }
 
         initialized = true
-        Cobblemon.LOGGER.info("CobbleHome storage initialized at: ${storageFile.absolutePath}")
+        Cobblemon.LOGGER.info(
+                "CobbleHome client storage initialized at: ${storageFile.absolutePath}"
+        )
     }
 
     /** Gets the home store instance */
     fun getHomeStore(): HomeStore {
         if (!initialized) {
-            throw IllegalStateException("HomeStorageManager not initialized")
+            initialize()
         }
         return homeStore
+    }
+
+    /** Adds a Pokémon to home storage */
+    fun addPokemon(pokemon: Pokemon) {
+        if (!initialized) {
+            initialize()
+        }
+
+        homeStore.add(pokemon)
+        save()
+    }
+
+    /** Removes a Pokémon from home storage */
+    fun removePokemon(pokemon: Pokemon): Boolean {
+        if (!initialized) {
+            initialize()
+        }
+
+        val removed = homeStore.remove(pokemon)
+        if (removed) {
+            save()
+        }
+        return removed
     }
 
     /** Saves the home store to disk */
@@ -58,10 +106,8 @@ object HomeStorageManager {
         try {
             val nbt = CompoundTag()
             val registryAccess =
-                    Cobblemon.implementation.server()?.registryAccess()
-                            ?: throw IllegalStateException(
-                                    "Cannot save without server registry access"
-                            )
+                    Minecraft.getInstance().connection?.registryAccess()
+                            ?: throw IllegalStateException("Cannot save without registry access")
 
             homeStore.saveToNBT(nbt, registryAccess)
 
@@ -70,25 +116,19 @@ object HomeStorageManager {
 
             // Write to file
             NbtIo.writeCompressed(nbt, storageFile.toPath())
-            Cobblemon.LOGGER.debug("CobbleHome storage saved successfully")
+            Cobblemon.LOGGER.debug("CobbleHome client storage saved successfully")
         } catch (e: IOException) {
-            Cobblemon.LOGGER.error("Failed to save CobbleHome storage", e)
+            Cobblemon.LOGGER.error("Failed to save CobbleHome client storage", e)
         }
     }
 
     /** Loads the home store from disk */
     private fun loadFromFile(): HomeStore {
         return try {
-            val nbt =
-                    NbtIo.readCompressed(
-                            storageFile.toPath(),
-                            net.minecraft.nbt.NbtAccounter.unlimitedHeap()
-                    )
+            val nbt = NbtIo.readCompressed(storageFile.toPath(), NbtAccounter.unlimitedHeap())
             val registryAccess =
-                    Cobblemon.implementation.server()?.registryAccess()
-                            ?: throw IllegalStateException(
-                                    "Cannot load without server registry access"
-                            )
+                    Minecraft.getInstance().connection?.registryAccess()
+                            ?: throw IllegalStateException("Cannot load without registry access")
 
             val uuidString =
                     if (nbt.contains("UUID")) nbt.getString("UUID")
@@ -98,30 +138,15 @@ object HomeStorageManager {
             store.loadFromNBT(nbt, registryAccess)
 
             Cobblemon.LOGGER.info(
-                    "CobbleHome storage loaded successfully with ${store.getOccupiedCount()} Pokémon"
+                    "CobbleHome client storage loaded successfully with ${store.getOccupiedCount()} Pokémon"
             )
             store
         } catch (e: Exception) {
-            Cobblemon.LOGGER.error("Failed to load CobbleHome storage, creating new store", e)
+            Cobblemon.LOGGER.error(
+                    "Failed to load CobbleHome client storage, creating new store",
+                    e
+            )
             HomeStore(UUID.fromString("00000000-0000-0000-0000-000000000001"))
-        }
-    }
-
-    /** Adds a player as an observer to the home store */
-    fun addObserver(player: ServerPlayer) {
-        homeStore.addObserver(player.uuid)
-    }
-
-    /** Removes a player as an observer from the home store */
-    fun removeObserver(playerUUID: UUID) {
-        homeStore.removeObserver(playerUUID)
-    }
-
-    /** Cleans up resources */
-    fun shutdown() {
-        if (initialized) {
-            save()
-            initialized = false
         }
     }
 }

@@ -23,12 +23,8 @@ class CobbleHomeMenu(
     }
 
     private var viewMode = ViewMode.HOME
-    private val homeStore = HomeStorageManager.getHomeStore()
 
     init {
-        // Add observer to home store
-        HomeStorageManager.addObserver(player)
-
         // Add player inventory slots (standard 3 rows + hotbar)
         // Player inventory
         for (row in 0 until 3) {
@@ -52,11 +48,8 @@ class CobbleHomeMenu(
         return true
     }
 
-    override fun removed(player: Player) {
+    override fun removed(player: net.minecraft.world.entity.player.Player) {
         super.removed(player)
-        if (player is ServerPlayer) {
-            HomeStorageManager.removeObserver(player.uuid)
-        }
     }
 
     /** Toggles between HOME and PC view modes */
@@ -76,12 +69,12 @@ class CobbleHomeMenu(
     fun getDisplayedPokemon(): List<com.cobblemon.mod.common.pokemon.Pokemon?> {
         return when (viewMode) {
             ViewMode.HOME -> {
-                val slots = homeStore.getAllSlots()
+                val slots = HomeStorageManager.getHomeStore().getAllSlots()
                 // Pad to at least TOTAL_SLOTS
                 slots + List(maxOf(0, TOTAL_SLOTS - slots.size)) { null }
             }
             ViewMode.PC -> {
-                val allPokemon = PCAccessor.getAllPCPokemon(player)
+                val allPokemon = PCAccessor.getAllPCPokemon()
                 // Pad to at least TOTAL_SLOTS
                 allPokemon + List(maxOf(0, TOTAL_SLOTS - allPokemon.size)) { null }
             }

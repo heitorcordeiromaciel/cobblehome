@@ -9,6 +9,18 @@ kotlin {
     jvmToolchain(21)
 }
 
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+        freeCompilerArgs.addAll(listOf(
+            "-Xjvm-default=all",
+            "-Xno-call-assertions",
+            "-Xno-param-assertions",
+            "-Xskip-metadata-version-check"
+        ))
+    }
+}
+
 
 group = "it.github.heitorcordeiromaciel"
 version = "1.0-SNAPSHOT"

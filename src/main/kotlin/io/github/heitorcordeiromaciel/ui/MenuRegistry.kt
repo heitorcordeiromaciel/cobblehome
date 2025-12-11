@@ -32,6 +32,7 @@ object MenuRegistry {
                     }
             )
 
+    @Suppress("DEPRECATION")
     @EventBusSubscriber(
             modid = "cobblehome_neoforge",
             bus = EventBusSubscriber.Bus.MOD,
