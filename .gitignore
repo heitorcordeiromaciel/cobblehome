@@ -13,6 +13,7 @@
 # Package Files (keep gradle-wrapper.jar)
 *.jar
 !gradle/wrapper/gradle-wrapper.jar
+!build/libs/cobblehome-*.jar
 *.war
 *.nar
 *.ear
@@ -30,7 +31,11 @@ kotlin-ic/
 
 # ===== Gradle =====
 .gradle/
-build/
+# Exclude build directory but keep the mod JAR
+build/*
+!build/libs/
+build/libs/*
+!build/libs/cobblehome-*.jar
 out/
 bin/
 
