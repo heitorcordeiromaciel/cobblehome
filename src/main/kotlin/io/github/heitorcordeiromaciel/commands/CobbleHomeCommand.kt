@@ -2,14 +2,12 @@ package io.github.heitorcordeiromaciel.commands
 
 import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.context.CommandContext
-import io.github.heitorcordeiromaciel.network.packets.RequestPCDataPacket
 import io.github.heitorcordeiromaciel.ui.CobbleHomeMenu
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.SimpleMenuProvider
-import net.neoforged.neoforge.network.PacketDistributor
 
 /** Registers and handles the /cobblehome command */
 object CobbleHomeCommand {
@@ -28,13 +26,8 @@ object CobbleHomeCommand {
             return 0
         }
 
-        // Send request for PC data to client
-        // The client will receive this and cache the PC data
-        PacketDistributor.sendToPlayer(player, RequestPCDataPacket())
-
         // Open the CobbleHome UI
-        // Note: In a full implementation, we'd wait for the client to confirm
-        // it has the data before opening, but for simplicity we open immediately
+        // The client will send RequestPCDataPacket when the UI opens
         openCobbleHomeUI(player)
 
         return 1

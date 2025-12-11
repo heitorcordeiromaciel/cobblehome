@@ -30,6 +30,11 @@ class CobbleHomeScreen(menu: CobbleHomeMenu, playerInventory: Inventory, title: 
     init {
         imageWidth = TEXTURE_WIDTH
         imageHeight = TEXTURE_HEIGHT
+
+        // Request PC data from server
+        net.neoforged.neoforge.network.PacketDistributor.sendToServer(
+                io.github.heitorcordeiromaciel.network.packets.RequestPCDataPacket()
+        )
     }
 
     override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
