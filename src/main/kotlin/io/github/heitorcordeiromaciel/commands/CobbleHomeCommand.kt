@@ -2,12 +2,12 @@ package io.github.heitorcordeiromaciel.commands
 
 import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.context.CommandContext
-import io.github.heitorcordeiromaciel.ui.CobbleHomeMenu
+import io.github.heitorcordeiromaciel.network.packets.OpenUIPacket
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerPlayer
-import net.minecraft.world.SimpleMenuProvider
+import net.neoforged.neoforge.network.PacketDistributor
 
 /** Registers and handles the /cobblehome command */
 object CobbleHomeCommand {
@@ -26,25 +26,9 @@ object CobbleHomeCommand {
             return 0
         }
 
-        // Open the CobbleHome UI
-        // The client will send RequestPCDataPacket when the UI opens
-        openCobbleHomeUI(player)
+        // Send packet to client to open UI
+        PacketDistributor.sendToPlayer(player, OpenUIPacket())
 
         return 1
-    }
-
-    private fun openCobbleHomeUI(player: ServerPlayer) {
-        player.openMenu(
-                SimpleMenuProvider(
-                        { containerId, playerInventory, _ ->
-                            return@SimpleMenuProvider CobbleHomeMenu(
-                                    containerId,
-                                    playerInventory,
-                                    player
-                            )
-                        },
-                        Component.literal("CobbleHome")
-                )
-        )
     }
 }

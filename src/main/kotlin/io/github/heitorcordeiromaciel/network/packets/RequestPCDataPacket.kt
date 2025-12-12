@@ -35,12 +35,15 @@ data class RequestPCDataPacket(val dummy: Boolean = true) : CustomPacketPayload 
                     try {
                         // Get player's PC
                         val pc = Cobblemon.storage.getPC(player)
+                        val pcPokemonCount = pc.toList().size
+                        
+                        Cobblemon.LOGGER.info("RequestPCDataPacket: Player ${player.name.string} has $pcPokemonCount Pokémon in PC")
 
                         // Send PC data back to client
                         val response = SendPCDataPacket.fromPCStore(pc, player.server)
                         context.reply(response)
 
-                        Cobblemon.LOGGER.debug("Sent PC data to ${player.name.string}")
+                        Cobblemon.LOGGER.info("Sent PC data to ${player.name.string}")
                     } catch (e: Exception) {
                         Cobblemon.LOGGER.error("Failed to send PC data to player", e)
                         // Send empty response

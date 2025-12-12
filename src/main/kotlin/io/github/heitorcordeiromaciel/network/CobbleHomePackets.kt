@@ -31,27 +31,36 @@ object CobbleHomePackets {
                 registrar.playToServer(
                         RequestPCDataPacket.TYPE,
                         RequestPCDataPacket.STREAM_CODEC,
-                        RequestPCDataPacket::handle
+                        RequestPCDataPacket.Companion::handle
                 )
-
                 registrar.playToServer(
-                        TransferToHomePacket.TYPE,
-                        TransferToHomePacket.STREAM_CODEC,
-                        TransferToHomePacket::handle
+                        TransferPokemonPacket.TYPE,
+                        TransferPokemonPacket.STREAM_CODEC,
+                        TransferPokemonPacket.Companion::handle
                 )
-
                 registrar.playToServer(
                         TransferToPCPacket.TYPE,
                         TransferToPCPacket.STREAM_CODEC,
-                        TransferToPCPacket::handle
+                        TransferToPCPacket.Companion::handle
                 )
         }
 
         private fun registerServerToClient(registrar: PayloadRegistrar) {
                 registrar.playToClient(
+                        OpenUIPacket.TYPE,
+                        OpenUIPacket.STREAM_CODEC,
+                        OpenUIPacket.Companion::handle
+                )
+
+                registrar.playToClient(
                         SendPCDataPacket.TYPE,
                         SendPCDataPacket.STREAM_CODEC,
-                        SendPCDataPacket::handle
+                        SendPCDataPacket.Companion::handle
+                )
+                registrar.playToClient(
+                        TransferPokemonResponsePacket.TYPE,
+                        TransferPokemonResponsePacket.STREAM_CODEC,
+                        TransferPokemonResponsePacket.Companion::handle
                 )
 
                 registrar.playToClient(

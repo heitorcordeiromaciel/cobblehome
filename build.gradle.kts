@@ -23,7 +23,7 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
 
 
 group = "it.github.heitorcordeiromaciel"
-version = "1.0.1"
+version = "1.0-SNAPSHOT"
 
 architectury {
     platformSetupLoomIde()

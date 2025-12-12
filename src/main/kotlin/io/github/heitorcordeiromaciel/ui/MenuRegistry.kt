@@ -22,12 +22,7 @@ object MenuRegistry {
                     "cobblehome",
                     Supplier {
                         IMenuTypeExtension.create { containerId, playerInventory, _ ->
-                            CobbleHomeMenu(
-                                    containerId,
-                                    playerInventory,
-                                    playerInventory.player as
-                                            net.minecraft.server.level.ServerPlayer
-                            )
+                            CobbleHomeMenu(containerId, playerInventory)
                         }
                     }
             )

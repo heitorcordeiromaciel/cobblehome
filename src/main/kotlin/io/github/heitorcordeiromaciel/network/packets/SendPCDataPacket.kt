@@ -35,6 +35,17 @@ data class SendPCDataPacket(val pokemonData: List<SerializedPokemon>) : CustomPa
                         result = 31 * result + nbtData.contentHashCode()
                         return result
                 }
+                
+                companion object {
+                        val STREAM_CODEC: StreamCodec<ByteBuf, SerializedPokemon> =
+                                StreamCodec.composite(
+                                        ByteBufCodecs.STRING_UTF8,
+                                        SerializedPokemon::uuid,
+                                        ByteBufCodecs.BYTE_ARRAY,
+                                        SerializedPokemon::nbtData,
+                                        ::SerializedPokemon
+                                )
+                }
         }
 
         companion object {
@@ -50,13 +61,7 @@ data class SendPCDataPacket(val pokemonData: List<SerializedPokemon>) : CustomPa
                         StreamCodec.composite(
                                 ByteBufCodecs.collection(
                                         { ArrayList() },
-                                        StreamCodec.composite(
-                                                ByteBufCodecs.STRING_UTF8,
-                                                SerializedPokemon::uuid,
-                                                ByteBufCodecs.BYTE_ARRAY,
-                                                SerializedPokemon::nbtData,
-                                                ::SerializedPokemon
-                                        )
+                                        SerializedPokemon.STREAM_CODEC
                                 ),
                                 SendPCDataPacket::pokemonData,
                                 ::SendPCDataPacket
@@ -67,12 +72,16 @@ data class SendPCDataPacket(val pokemonData: List<SerializedPokemon>) : CustomPa
                         server: net.minecraft.server.MinecraftServer
                 ): SendPCDataPacket {
                         val pokemonList = pc.toList()
+                        com.cobblemon.mod.common.Cobblemon.LOGGER.info(
+                                "SendPCDataPacket.fromPCStore: Converting ${pokemonList.size} Pokémon to packet"
+                        )
+                        
                         val serialized =
                                 pokemonList.map { pokemon ->
-                                        val nbt = CompoundTag()
                                         val registryAccess = server.registryAccess()
 
-                                        pokemon.saveToNBT(registryAccess, nbt)
+                                        // Create NBT and save the full Pokemon data
+                                        val nbt = pokemon.saveToNBT(registryAccess)
 
                                         val outputStream = ByteArrayOutputStream()
                                         NbtIo.writeCompressed(nbt, outputStream)
@@ -82,12 +91,20 @@ data class SendPCDataPacket(val pokemonData: List<SerializedPokemon>) : CustomPa
                                                 nbtData = outputStream.toByteArray()
                                         )
                                 }
+                        
+                        com.cobblemon.mod.common.Cobblemon.LOGGER.info(
+                                "SendPCDataPacket.fromPCStore: Serialized ${serialized.size} Pokémon"
+                        )
 
                         return SendPCDataPacket(serialized)
                 }
 
                 fun handle(packet: SendPCDataPacket, context: IPayloadContext) {
                         context.enqueueWork {
+                                com.cobblemon.mod.common.Cobblemon.LOGGER.info(
+                                        "SendPCDataPacket.handle: Received packet with ${packet.pokemonData.size} serialized Pokémon"
+                                )
+                                
                                 // Deserialize Pokémon and cache on client
                                 val pokemonList =
                                         packet.pokemonData.mapNotNull { serialized ->
@@ -108,14 +125,20 @@ data class SendPCDataPacket(val pokemonData: List<SerializedPokemon>) : CustomPa
                                                                         ?.registryAccess()
                                                                         ?: return@mapNotNull null
 
-                                                        Pokemon.loadFromNBT(registryAccess, nbt)
+                                                         Pokemon.loadFromNBT(registryAccess, nbt)
                                                 } catch (e: Exception) {
+                                                        com.cobblemon.mod.common.Cobblemon.LOGGER.error(
+                                                                "Failed to deserialize Pokémon", e
+                                                        )
                                                         null
                                                 }
                                         }
 
                                 // Update PC cache
                                 PCAccessor.updatePCCache(pokemonList)
+                                com.cobblemon.mod.common.Cobblemon.LOGGER.info(
+                                        "SendPCDataPacket: Cached ${pokemonList.size} Pokémon from PC"
+                                )
                         }
                 }
         }

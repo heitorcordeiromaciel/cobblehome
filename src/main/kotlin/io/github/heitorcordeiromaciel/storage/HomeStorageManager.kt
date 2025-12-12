@@ -36,7 +36,10 @@ object HomeStorageManager {
     /** Save and shutdown on client logout */
     @SubscribeEvent
     fun onClientLogout(event: ClientPlayerNetworkEvent.LoggingOut) {
-        save()
+        // Only save if we still have registry access
+        if (Minecraft.getInstance().connection != null) {
+            save()
+        }
     }
 
     /** Initializes the storage manager and loads existing data */
