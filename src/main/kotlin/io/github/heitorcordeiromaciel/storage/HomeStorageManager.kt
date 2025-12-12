@@ -30,16 +30,29 @@ object HomeStorageManager {
     /** Initialize on client login */
     @SubscribeEvent
     fun onClientLogin(event: ClientPlayerNetworkEvent.LoggingIn) {
+        Cobblemon.LOGGER.info("=== CLIENT LOGIN EVENT ===")
         initialize()
+        
+        // Always load from disk when joining a world
+        if (storageFile.exists()) {
+            try {
+                Cobblemon.LOGGER.info("Loading Home storage from disk...")
+                val loadedStore = loadFromFile()
+                homeStore = loadedStore
+                Cobblemon.LOGGER.info("✅ Loaded Home storage with ${homeStore.getOccupiedCount()} Pokemon")
+            } catch (e: Exception) {
+                Cobblemon.LOGGER.error("Failed to load Home storage on login", e)
+            }
+        } else {
+            Cobblemon.LOGGER.info("No save file found, starting with empty Home storage")
+        }
     }
 
-    /** Save and shutdown on client logout */
+    /** Reset on logout */
     @SubscribeEvent
     fun onClientLogout(event: ClientPlayerNetworkEvent.LoggingOut) {
-        // Only save if we still have registry access
-        if (Minecraft.getInstance().connection != null) {
-            save()
-        }
+        Cobblemon.LOGGER.info("=== CLIENT LOGOUT EVENT ===")
+        // No need to do anything here, data is saved on each transfer
     }
 
     /** Initializes the storage manager and loads existing data */
@@ -56,14 +69,8 @@ object HomeStorageManager {
 
         storageFile = File(cobblehomeDir, "home_storage.dat")
 
-        // Load or create store
-        homeStore =
-                if (storageFile.exists()) {
-                    loadFromFile()
-                } else {
-                    // Create new store with a fixed UUID for cross-world persistence
-                    HomeStore(UUID.fromString("00000000-0000-0000-0000-000000000001"))
-                }
+        // Create empty store initially
+        homeStore = HomeStore(UUID.fromString("00000000-0000-0000-0000-000000000001"))
 
         initialized = true
         Cobblemon.LOGGER.info(
@@ -81,47 +88,70 @@ object HomeStorageManager {
 
     /** Adds a Pokémon to home storage */
     fun addPokemon(pokemon: Pokemon) {
+        Cobblemon.LOGGER.info("=== ADD POKEMON CALLED: ${pokemon.species.name} ===")
         if (!initialized) {
             initialize()
         }
 
         homeStore.add(pokemon)
-        save()
+        Cobblemon.LOGGER.info("Pokemon added to store, count now: ${homeStore.getOccupiedCount()}")
+        save() // Save immediately after adding
     }
 
     /** Removes a Pokémon from home storage */
     fun removePokemon(pokemon: Pokemon): Boolean {
+        Cobblemon.LOGGER.info("=== REMOVE POKEMON CALLED: ${pokemon.species.name} ===")
         if (!initialized) {
             initialize()
         }
 
         val removed = homeStore.remove(pokemon)
         if (removed) {
-            save()
+            Cobblemon.LOGGER.info("Pokemon removed from store, count now: ${homeStore.getOccupiedCount()}")
+            save() // Save immediately after removing
+        } else {
+            Cobblemon.LOGGER.warn("Failed to remove Pokemon from store")
         }
         return removed
     }
 
     /** Saves the home store to disk */
     fun save() {
-        if (!initialized) return
+        Cobblemon.LOGGER.info("=== SAVE CALLED ===")
+        Cobblemon.LOGGER.info("Initialized: $initialized")
+        if (!initialized) {
+            Cobblemon.LOGGER.warn("Save aborted: not initialized")
+            return
+        }
 
         try {
+            Cobblemon.LOGGER.info("Creating NBT tag...")
             val nbt = CompoundTag()
             val registryAccess =
                     Minecraft.getInstance().connection?.registryAccess()
-                            ?: throw IllegalStateException("Cannot save without registry access")
+                            ?: run {
+                                Cobblemon.LOGGER.warn("Cannot save Home storage: no registry access")
+                                return
+                            }
 
+            Cobblemon.LOGGER.info("Saving to NBT...")
             homeStore.saveToNBT(nbt, registryAccess)
+            
+            Cobblemon.LOGGER.info("NBT keys: ${nbt.allKeys}")
 
             // Ensure parent directory exists
             storageFile.parentFile?.mkdirs()
-
+            
+            Cobblemon.LOGGER.info("Writing to file: ${storageFile.absolutePath}")
             // Write to file
             NbtIo.writeCompressed(nbt, storageFile.toPath())
-            Cobblemon.LOGGER.debug("CobbleHome client storage saved successfully")
+            
+            Cobblemon.LOGGER.info("✅ CobbleHome storage saved: ${homeStore.getOccupiedCount()} Pokemon to ${storageFile.absolutePath}")
+            Cobblemon.LOGGER.info("File exists after save: ${storageFile.exists()}, size: ${storageFile.length()} bytes")
         } catch (e: IOException) {
             Cobblemon.LOGGER.error("Failed to save CobbleHome client storage", e)
+        } catch (e: Exception) {
+            Cobblemon.LOGGER.error("Unexpected error saving CobbleHome storage", e)
         }
     }
 

@@ -79,38 +79,49 @@ class HomeStore(override val uuid: UUID) : PokemonStore<HomePosition>() {
     }
 
     override fun saveToNBT(nbt: CompoundTag, registryAccess: RegistryAccess): CompoundTag {
-        val pokemonList = ListTag()
+        Cobblemon.LOGGER.info("=== HomeStore.saveToNBT CALLED ===")
+        Cobblemon.LOGGER.info("Saving ${getOccupiedCount()} Pokemon out of ${pokemon.size} slots")
+        
+        nbt.putString("UUID", uuid.toString())
+
+        val pokemonList = net.minecraft.nbt.ListTag()
         pokemon.forEachIndexed { index, poke ->
             if (poke != null) {
-                val pokemonTag = CompoundTag()
+                Cobblemon.LOGGER.info("Saving Pokemon at slot $index: ${poke.species.name}")
+                val pokemonTag = poke.saveToNBT(registryAccess)
                 pokemonTag.putInt("Slot", index)
-                poke.saveToNBT(registryAccess, pokemonTag)
                 pokemonList.add(pokemonTag)
             }
         }
+
         nbt.put("Pokemon", pokemonList)
-        nbt.putString("UUID", uuid.toString())
+        Cobblemon.LOGGER.info("Saved ${pokemonList.size} Pokemon to NBT")
         return nbt
     }
 
-    override fun loadFromNBT(
-            nbt: CompoundTag,
-            registryAccess: RegistryAccess
-    ): PokemonStore<HomePosition> {
+    override fun loadFromNBT(nbt: CompoundTag, registryAccess: RegistryAccess): PokemonStore<HomePosition> {
+        Cobblemon.LOGGER.info("=== HomeStore.loadFromNBT CALLED ===")
+        Cobblemon.LOGGER.info("NBT keys: ${nbt.allKeys}")
+        
         pokemon.clear()
 
         val uuidString = nbt.getString("UUID")
+        Cobblemon.LOGGER.info("Loading UUID: $uuidString")
         if (uuidString.isNotEmpty() && UUID.fromString(uuidString) != uuid) {
             Cobblemon.LOGGER.warn("HomeStore UUID mismatch during load")
         }
 
         val pokemonList = nbt.getList("Pokemon", 10) // 10 = CompoundTag
+        Cobblemon.LOGGER.info("Pokemon list size: ${pokemonList.size}")
+        
         for (i in 0 until pokemonList.size) {
             val pokemonTag = pokemonList.getCompound(i)
             val slot = pokemonTag.getInt("Slot")
+            Cobblemon.LOGGER.info("Loading Pokemon from slot $slot")
 
             try {
                 val poke = Pokemon.loadFromNBT(registryAccess, pokemonTag)
+                Cobblemon.LOGGER.info("Loaded Pokemon: ${poke.species.name}")
 
                 // Expand list if necessary
                 while (slot >= pokemon.size) {
@@ -118,10 +129,12 @@ class HomeStore(override val uuid: UUID) : PokemonStore<HomePosition>() {
                 }
                 pokemon[slot] = poke
             } catch (e: Exception) {
+                Cobblemon.LOGGER.error("Failed to load Pokemon from slot $slot", e)
                 handleInvalidSpeciesNBT(pokemonTag)
             }
         }
 
+        Cobblemon.LOGGER.info("Loaded ${getOccupiedCount()} Pokemon into store")
         initialize()
         return this
     }

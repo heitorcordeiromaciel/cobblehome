@@ -61,9 +61,8 @@ data class TransferPokemonResponsePacket(
                         
                         val pokemon = Pokemon.loadFromNBT(registryAccess, nbt)
                         
-                        // Add to Home storage
-                        HomeStorageManager.getHomeStore().add(pokemon)
-                        HomeStorageManager.save()
+                        // Add to Home storage using the proper method that triggers save
+                        HomeStorageManager.addPokemon(pokemon)
                         
                         // Remove from PC cache
                         val currentCache = io.github.heitorcordeiromaciel.storage.PCAccessor.getAllPCPokemon()
@@ -78,9 +77,8 @@ data class TransferPokemonResponsePacket(
                         val pokemon = homeStore.getAllSlots().find { it?.uuid == uuid }
                         
                         if (pokemon != null) {
-                            // Remove from Home
-                            homeStore.remove(pokemon)
-                            HomeStorageManager.save()
+                            // Remove from Home using the proper method that triggers save
+                            HomeStorageManager.removePokemon(pokemon)
                             
                             // Serialize Pokemon and send to server
                             val registryAccess = net.minecraft.client.Minecraft.getInstance()
