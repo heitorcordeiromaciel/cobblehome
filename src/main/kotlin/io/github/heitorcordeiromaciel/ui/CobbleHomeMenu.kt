@@ -20,7 +20,7 @@ class CobbleHomeMenu(
 
     companion object {
         const val SLOTS_PER_ROW = 9
-        const val ROWS = 5  // Changed from 6 to 5 for 30 slots total
+        const val ROWS = 5
         const val TOTAL_SLOTS = SLOTS_PER_ROW * ROWS // 45 slots (5 rows x 9)
         const val POKEMON_SLOTS_START = 0
         const val PLAYER_INV_START = TOTAL_SLOTS

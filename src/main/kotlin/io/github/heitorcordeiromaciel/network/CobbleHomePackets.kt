@@ -63,10 +63,6 @@ object CobbleHomePackets {
                         TransferPokemonResponsePacket.Companion::handle
                 )
 
-                registrar.playToClient(
-                        TransferResultPacket.TYPE,
-                        TransferResultPacket.STREAM_CODEC,
-                        TransferResultPacket::handle
-                )
+
         }
 }
