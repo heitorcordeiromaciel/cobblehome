@@ -30,7 +30,6 @@ object HomeStorageManager {
     /** Initialize on client login */
     @SubscribeEvent
     fun onClientLogin(event: ClientPlayerNetworkEvent.LoggingIn) {
-        Cobblemon.LOGGER.info("=== CLIENT LOGIN EVENT ===")
         initialize()
         
         // Always load from disk when joining a world
@@ -51,7 +50,6 @@ object HomeStorageManager {
     /** Reset on logout */
     @SubscribeEvent
     fun onClientLogout(event: ClientPlayerNetworkEvent.LoggingOut) {
-        Cobblemon.LOGGER.info("=== CLIENT LOGOUT EVENT ===")
         // No need to do anything here, data is saved on each transfer
     }
 
@@ -88,26 +86,22 @@ object HomeStorageManager {
 
     /** Adds a Pokémon to home storage */
     fun addPokemon(pokemon: Pokemon) {
-        Cobblemon.LOGGER.info("=== ADD POKEMON CALLED: ${pokemon.species.name} ===")
         if (!initialized) {
             initialize()
         }
 
         homeStore.add(pokemon)
-        Cobblemon.LOGGER.info("Pokemon added to store, count now: ${homeStore.getOccupiedCount()}")
         save() // Save immediately after adding
     }
 
     /** Removes a Pokémon from home storage */
     fun removePokemon(pokemon: Pokemon): Boolean {
-        Cobblemon.LOGGER.info("=== REMOVE POKEMON CALLED: ${pokemon.species.name} ===")
         if (!initialized) {
             initialize()
         }
 
         val removed = homeStore.remove(pokemon)
         if (removed) {
-            Cobblemon.LOGGER.info("Pokemon removed from store, count now: ${homeStore.getOccupiedCount()}")
             save() // Save immediately after removing
         } else {
             Cobblemon.LOGGER.warn("Failed to remove Pokemon from store")
@@ -117,15 +111,11 @@ object HomeStorageManager {
 
     /** Saves the home store to disk */
     fun save() {
-        Cobblemon.LOGGER.info("=== SAVE CALLED ===")
-        Cobblemon.LOGGER.info("Initialized: $initialized")
         if (!initialized) {
-            Cobblemon.LOGGER.warn("Save aborted: not initialized")
             return
         }
 
         try {
-            Cobblemon.LOGGER.info("Creating NBT tag...")
             val nbt = CompoundTag()
             val registryAccess =
                     Minecraft.getInstance().connection?.registryAccess()
@@ -134,20 +124,14 @@ object HomeStorageManager {
                                 return
                             }
 
-            Cobblemon.LOGGER.info("Saving to NBT...")
             homeStore.saveToNBT(nbt, registryAccess)
             
-            Cobblemon.LOGGER.info("NBT keys: ${nbt.allKeys}")
-
             // Ensure parent directory exists
             storageFile.parentFile?.mkdirs()
             
-            Cobblemon.LOGGER.info("Writing to file: ${storageFile.absolutePath}")
             // Write to file
             NbtIo.writeCompressed(nbt, storageFile.toPath())
             
-            Cobblemon.LOGGER.info("✅ CobbleHome storage saved: ${homeStore.getOccupiedCount()} Pokemon to ${storageFile.absolutePath}")
-            Cobblemon.LOGGER.info("File exists after save: ${storageFile.exists()}, size: ${storageFile.length()} bytes")
         } catch (e: IOException) {
             Cobblemon.LOGGER.error("Failed to save CobbleHome client storage", e)
         } catch (e: Exception) {

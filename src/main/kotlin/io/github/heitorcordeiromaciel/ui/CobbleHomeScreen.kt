@@ -21,10 +21,7 @@ class CobbleHomeScreen(menu: CobbleHomeMenu, playerInventory: Inventory, title: 
         private const val TEXTURE_WIDTH = 176
         private const val TEXTURE_HEIGHT = 222
 
-        // Control slot indices (in hotbar)
-        private const val PREV_BOX_SLOT = 3 // 4th hotbar slot (index 3)
-        private const val TOGGLE_SLOT = 4 // 5th hotbar slot (middle)
-        private const val NEXT_BOX_SLOT = 5 // 6th hotbar slot (index 5)
+        // Control slot indices (in hotbar) - see CobbleHomeMenu constants
     }
 
     init {
@@ -32,9 +29,6 @@ class CobbleHomeScreen(menu: CobbleHomeMenu, playerInventory: Inventory, title: 
         imageHeight = TEXTURE_HEIGHT
 
         // Request PC data from server
-        com.cobblemon.mod.common.Cobblemon.LOGGER.info(
-                "CobbleHomeScreen: Requesting PC data from server"
-        )
         net.neoforged.neoforge.network.PacketDistributor.sendToServer(
                 io.github.heitorcordeiromaciel.network.packets.RequestPCDataPacket()
         )
@@ -46,7 +40,7 @@ class CobbleHomeScreen(menu: CobbleHomeMenu, playerInventory: Inventory, title: 
         // Render control buttons over hotbar slots
         renderControlButtons(graphics)
 
-        // Render Pokemon sprites in storage slots
+        // Render Pokemon sprites in storage slots (both Home and PC)
         renderPokemonSprites(graphics)
 
         // Render tooltips last so they appear on top
@@ -57,94 +51,120 @@ class CobbleHomeScreen(menu: CobbleHomeMenu, playerInventory: Inventory, title: 
         val hoveredSlot = slotUnderMouse ?: return
         val slotIndex = hoveredSlot.index
 
-        // Control button tooltips
-        if (slotIndex == CobbleHomeMenu.HOTBAR_START + PREV_BOX_SLOT) {
-            graphics.renderTooltip(font, Component.literal("Previous Box"), mouseX, mouseY)
+        // Hotbar Control button tooltips
+        if (slotIndex == CobbleHomeMenu.PREV_BOX_SLOT_INDEX) {
+            graphics.renderTooltip(font, Component.literal("Previous PC Box"), mouseX, mouseY)
             return
         }
-        if (slotIndex == CobbleHomeMenu.HOTBAR_START + TOGGLE_SLOT) {
-            val viewText =
-                    when (menu.getViewMode()) {
-                        CobbleHomeMenu.ViewMode.HOME -> "Switch to PC View"
-                        CobbleHomeMenu.ViewMode.PC -> "Switch to Home View"
-                    }
-            graphics.renderTooltip(font, Component.literal(viewText), mouseX, mouseY)
+        if (slotIndex == CobbleHomeMenu.NEXT_BOX_SLOT_INDEX) {
+            graphics.renderTooltip(font, Component.literal("Next PC Box"), mouseX, mouseY)
             return
         }
-        if (slotIndex == CobbleHomeMenu.HOTBAR_START + NEXT_BOX_SLOT) {
-            graphics.renderTooltip(font, Component.literal("Next Box"), mouseX, mouseY)
+        
+        // Home Control button tooltips
+        if (slotIndex == CobbleHomeMenu.PREV_HOME_SLOT_INDEX) {
+            graphics.renderTooltip(font, Component.literal("Previous Home Box"), mouseX, mouseY)
+            return
+        }
+        if (slotIndex == CobbleHomeMenu.NEXT_HOME_SLOT_INDEX) {
+            graphics.renderTooltip(font, Component.literal("Next Home Box"), mouseX, mouseY)
             return
         }
 
         // Pokemon tooltips
-        if (slotIndex < CobbleHomeMenu.TOTAL_SLOTS) {
-            val pokemon = menu.getDisplayedPokemon().getOrNull(slotIndex)
-            if (pokemon != null) {
-                val tooltipLines = mutableListOf<Component>()
-
-                // Pokemon name with shiny indicator
-                val nameText =
-                        if (pokemon.shiny) "★ ${pokemon.species.translatedName.string}"
-                        else pokemon.species.translatedName.string
-                tooltipLines.add(
-                        Component.literal(nameText).withStyle {
-                            it.withColor(if (pokemon.shiny) 0xFFD700 else 0xFFFFFF)
-                        }
-                )
-
-                // Species
-                tooltipLines.add(Component.literal("Species: ${pokemon.species.name}"))
-
-                // Form (if not normal)
-                if (pokemon.form.name != "normal") {
-                    tooltipLines.add(Component.literal("Form: ${pokemon.form.name}"))
-                }
-
-                // Level
-                tooltipLines.add(Component.literal("Level: ${pokemon.level}"))
-
-                // Gender
-                tooltipLines.add(Component.literal("Gender: ${pokemon.gender.name}"))
-
-                // Nature
-                tooltipLines.add(Component.literal("Nature: ${pokemon.nature.name.path}"))
-
-                // Ability
-                tooltipLines.add(Component.literal("Ability: ${pokemon.ability.name}"))
-
-                // HP
-                tooltipLines.add(
-                        Component.literal("HP: ${pokemon.currentHealth}/${pokemon.maxHealth}")
-                )
-
-                // Friendship
-                tooltipLines.add(Component.literal("Friendship: ${pokemon.friendship}"))
-
-                // Moves
-                tooltipLines.add(Component.literal("Moves:"))
-                pokemon.moveSet.forEach { move ->
-                    tooltipLines.add(Component.literal("  • ${move.name}"))
-                }
-
-                // Held item
-                if (!pokemon.heldItem().isEmpty) {
-                    tooltipLines.add(
-                            Component.literal("Held Item: ${pokemon.heldItem().hoverName.string}")
-                    )
-                }
-
-                // Pokeball
-                tooltipLines.add(Component.literal("Ball: ${pokemon.caughtBall.name.path}"))
-
-                graphics.renderTooltip(
-                        font,
-                        tooltipLines,
-                        java.util.Optional.empty(),
-                        mouseX,
-                        mouseY
-                )
-                return
+        // Check if it's a Pokemon slot (Top or Bottom)
+        // Adjust logic: Indices 0-53 are Home Grid (Glass or Pokemon), 54+ are PC
+        val homePokemon = menu.getHomePokemon()
+        val pcPokemon = menu.getPCPokemon()
+        
+        var pokemon: com.cobblemon.mod.common.pokemon.Pokemon? = null
+        
+        if (slotIndex < CobbleHomeMenu.HOME_GRID_SIZE) {
+            // Home Grid Area
+            // Check if it's a Pokemon slot (ignore Glass)
+            // But we must NOT ignore the button slots which are technically glass/virtual but handled above
+            
+            val slot = menu.slots[slotIndex] // Should be safe
+            if (slot is PokemonStorageSlot) {
+                val pokemonIndex = slot.index // Index in homeContainer
+                pokemon = homePokemon.getOrNull(pokemonIndex)
             }
+        } else if (slotIndex >= CobbleHomeMenu.PC_SLOTS_START_INDEX) {
+            // PC Slot
+            val pcIndex = slotIndex - CobbleHomeMenu.PC_SLOTS_START_INDEX
+            // Check if it's a valid PC slot (0-29) and not a button slot
+            if (pcIndex < CobbleHomeMenu.PC_SLOTS_PER_BOX) {
+                 pokemon = pcPokemon.getOrNull(pcIndex)
+            }
+        }
+
+        if (pokemon != null) {
+            val tooltipLines = mutableListOf<Component>()
+
+            // Pokemon name with shiny indicator
+            val nameText =
+                    if (pokemon.shiny) "★ ${pokemon.species.translatedName.string}"
+                    else pokemon.species.translatedName.string
+            tooltipLines.add(
+                    Component.literal(nameText).withStyle {
+                        it.withColor(if (pokemon.shiny) 0xFFD700 else 0xFFFFFF)
+                    }
+            )
+
+            // Species
+            tooltipLines.add(Component.literal("Species: ${pokemon.species.name}"))
+            
+            // Location hint
+            if (slotIndex < CobbleHomeMenu.TOTAL_HOME_SLOTS) {
+                 tooltipLines.add(Component.literal("Home Page ${menu.getCurrentHomeBox() + 1}").withStyle(net.minecraft.ChatFormatting.GREEN))
+            } else {
+                 tooltipLines.add(Component.literal("PC Box ${menu.getCurrentBox() + 1}").withStyle(net.minecraft.ChatFormatting.AQUA))
+            }
+
+            // Form (if not normal)
+            if (pokemon.form.name != "normal") {
+                tooltipLines.add(Component.literal("Form: ${pokemon.form.name}"))
+            }
+
+            // Level
+            tooltipLines.add(Component.literal("Level: ${pokemon.level}"))
+
+            // Gender
+            tooltipLines.add(Component.literal("Gender: ${pokemon.gender.name}"))
+
+            // Nature
+            tooltipLines.add(Component.literal("Nature: ${pokemon.nature.name.path}"))
+
+            // Ability
+            tooltipLines.add(Component.literal("Ability: ${pokemon.ability.name}"))
+
+            // Friendship
+            tooltipLines.add(Component.literal("Friendship: ${pokemon.friendship}"))
+
+            // Moves
+            tooltipLines.add(Component.literal("Moves:"))
+            pokemon.moveSet.forEach { move ->
+                tooltipLines.add(Component.literal("  • ${move.name}"))
+            }
+
+            // Held item
+            if (!pokemon.heldItem().isEmpty) {
+                tooltipLines.add(
+                        Component.literal("Held Item: ${pokemon.heldItem().hoverName.string}")
+                )
+            }
+
+            // Pokeball
+            tooltipLines.add(Component.literal("Ball: ${pokemon.caughtBall.name.path}"))
+
+            graphics.renderTooltip(
+                    font,
+                    tooltipLines,
+                    java.util.Optional.empty(),
+                    mouseX,
+                    mouseY
+            )
+            return
         }
     }
 
@@ -156,125 +176,168 @@ class CobbleHomeScreen(menu: CobbleHomeMenu, playerInventory: Inventory, title: 
 
         // Render background texture
         graphics.blit(BACKGROUND_TEXTURE, x, y, 0, 0, imageWidth, imageHeight)
+        
+        // Render labels manually here if strict control is needed, but renderLabels is also called by screen
     }
 
     private fun renderControlButtons(graphics: GuiGraphics) {
         val x = (width - imageWidth) / 2
         val y = (height - imageHeight) / 2
+        
+        // Validating indices exist in range
+        if (CobbleHomeMenu.PREV_BOX_SLOT_INDEX >= menu.slots.size || CobbleHomeMenu.NEXT_BOX_SLOT_INDEX >= menu.slots.size) return 
+        
+        // --- PC CONTROLS (Hotbar row) ---
+        // PREV BOX BUTTON
+        val prevSlot = menu.slots[CobbleHomeMenu.PREV_BOX_SLOT_INDEX]
+        graphics.renderItem(ItemStack(Items.STONE_BUTTON), x + prevSlot.x, y + prevSlot.y)
 
-        // Render prev box button (stone block in slot 4)
-        val prevSlot = menu.slots[CobbleHomeMenu.HOTBAR_START + PREV_BOX_SLOT]
-        graphics.renderItem(ItemStack(Items.STONE), x + prevSlot.x, y + prevSlot.y)
-
-        // Render toggle button (wooden sign in slot 5 - middle)
-        val toggleSlot = menu.slots[CobbleHomeMenu.HOTBAR_START + TOGGLE_SLOT]
-        graphics.renderItem(ItemStack(Items.OAK_SIGN), x + toggleSlot.x, y + toggleSlot.y)
-
-        // Render next box button (stone block in slot 6)
-        val nextSlot = menu.slots[CobbleHomeMenu.HOTBAR_START + NEXT_BOX_SLOT]
-        graphics.renderItem(ItemStack(Items.STONE), x + nextSlot.x, y + nextSlot.y)
+        // NEXT BOX BUTTON
+        val nextSlot = menu.slots[CobbleHomeMenu.NEXT_BOX_SLOT_INDEX]
+        graphics.renderItem(ItemStack(Items.STONE_BUTTON), x + nextSlot.x, y + nextSlot.y)
+        
+        // --- HOME CONTROLS (Corner glass slots) ---
+        if (CobbleHomeMenu.PREV_HOME_SLOT_INDEX < menu.slots.size && CobbleHomeMenu.NEXT_HOME_SLOT_INDEX < menu.slots.size) {
+            val prevHomeSlot = menu.slots[CobbleHomeMenu.PREV_HOME_SLOT_INDEX]
+            val nextHomeSlot = menu.slots[CobbleHomeMenu.NEXT_HOME_SLOT_INDEX]
+            
+            // Render arrow buttons (using Stone Button for consistency, or maybe an Arrow item if available?)
+            // Using Stone Button for now.
+            graphics.renderItem(ItemStack(Items.STONE_BUTTON), x + prevHomeSlot.x, y + prevHomeSlot.y)
+            graphics.renderItem(ItemStack(Items.STONE_BUTTON), x + nextHomeSlot.x, y + nextHomeSlot.y)
+        }
     }
 
     private fun renderPokemonSprites(graphics: GuiGraphics) {
         val x = (width - imageWidth) / 2
         val y = (height - imageHeight) / 2
-        val pokemon = menu.getDisplayedPokemon()
-
-        // Render Pokemon in storage slots
-        for (i in 0 until CobbleHomeMenu.TOTAL_SLOTS) {
-            val poke = pokemon.getOrNull(i)
-            if (poke != null) {
-                val slot = menu.slots[i]
-                val slotX = x + slot.x
-                val slotY = y + slot.y
-
-                // Render Pokemon sprite
-                graphics.renderItem(PokemonItem.from(poke.species), slotX, slotY)
-            }
+        
+        // 1. Render Home Pokemon (Top Grid with Glass Border)
+        val homePokemon = menu.getHomePokemon()
+        
+        // Iterate through all slots in the Home Grid (54 slots)
+        for (i in 0 until CobbleHomeMenu.HOME_GRID_SIZE) {
+             val slot = menu.slots[i]
+             
+             // Check if it's a Pokemon storage slot (i.e. Inner Grid)
+             if (slot is PokemonStorageSlot) {
+                 val pokemonIndex = slot.index // This is the index in homeContainer (0-27)
+                 val poke = homePokemon.getOrNull(pokemonIndex)
+                 if (poke != null) {
+                     renderSinglePokemon(graphics, poke, x + slot.x, y + slot.y)
+                 }
+             }
+        }
+        
+        // 2. Render PC Pokemon (Bottom)
+        val pcPokemon = menu.getPCPokemon()
+        
+        // PC Slots start after HOME_GRID_SIZE
+        for (i in 0 until CobbleHomeMenu.PC_SLOTS_PER_BOX) {
+             val poke = pcPokemon.getOrNull(i)
+             if (poke != null) {
+                 val slotIndex = CobbleHomeMenu.PC_SLOTS_START_INDEX + i
+                 if (slotIndex < menu.slots.size) {
+                     val slot = menu.slots[slotIndex]
+                     renderSinglePokemon(graphics, poke, x + slot.x, y + slot.y)
+                 }
+             }
         }
     }
+    
+    private fun renderSinglePokemon(graphics: GuiGraphics, pokemon: com.cobblemon.mod.common.pokemon.Pokemon, x: Int, y: Int) {
+          graphics.renderItem(com.cobblemon.mod.common.item.PokemonItem.from(pokemon.species), x, y)
+    } 
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
         // Handle slot clicks
         val hoveredSlot = slotUnderMouse
+        val x = (width - imageWidth) / 2
+        val y = (height - imageHeight) / 2
 
-        if (hoveredSlot != null && button == 0) { // Left click
-            val slotIndex = hoveredSlot.index
-
-            // Check if clicking a control button in hotbar
-            if (slotIndex == CobbleHomeMenu.HOTBAR_START + PREV_BOX_SLOT) {
-                menu.previousBox()
-                return true
-            }
-            if (slotIndex == CobbleHomeMenu.HOTBAR_START + TOGGLE_SLOT) {
-                menu.toggleViewMode()
-                return true
-            }
-            if (slotIndex == CobbleHomeMenu.HOTBAR_START + NEXT_BOX_SLOT) {
-                menu.nextBox()
-                return true
-            }
-
-            // Check if clicking a Pokemon storage slot
-            if (slotIndex < CobbleHomeMenu.TOTAL_SLOTS) {
-                val pokemon = menu.getDisplayedPokemon().getOrNull(slotIndex)
-                if (pokemon != null) {
-                    // Send transfer packet
-                    val fromPC = menu.getViewMode() == CobbleHomeMenu.ViewMode.PC
-                    val packet =
-                            io.github.heitorcordeiromaciel.network.packets.TransferPokemonPacket(
-                                    pokemonUUID = pokemon.uuid.toString(),
-                                    fromPC = fromPC
-                            )
-                    net.neoforged.neoforge.network.PacketDistributor.sendToServer(packet)
-
-                    com.cobblemon.mod.common.Cobblemon.LOGGER.info(
-                            "Requesting transfer: ${pokemon.species.name} from ${if (fromPC) "PC" else "Home"} to ${if (fromPC) "Home" else "PC"}"
-                    )
-                    return true
+        if (hoveredSlot != null) { 
+            val slotIndex = hoveredSlot.index // This is the index in menu.slots list
+            
+            if (slotIndex < CobbleHomeMenu.TOTAL_MENU_SLOTS) {
+                if (button == 0) { // Left click logic
+                    // --- PC CONTROLS ---
+                    if (slotIndex == CobbleHomeMenu.PREV_BOX_SLOT_INDEX) {
+                        menu.previousBox()
+                        return true
+                    }
+                    if (slotIndex == CobbleHomeMenu.NEXT_BOX_SLOT_INDEX) {
+                        menu.nextBox()
+                        return true
+                    }
+                    
+                    // --- HOME CONTROLS ---
+                    if (slotIndex == CobbleHomeMenu.PREV_HOME_SLOT_INDEX) {
+                        menu.previousHomeBox()
+                        return true
+                    }
+                    if (slotIndex == CobbleHomeMenu.NEXT_HOME_SLOT_INDEX) {
+                        menu.nextHomeBox()
+                        return true
+                    }
+        
+                    // --- TRANSFER LOGIC ---
+                    // Click Top Slot (Home) -> Transfer to PC
+                    // Click Bottom Slot (PC) -> Transfer to Home
+                    
+                    var pokemonToTransfer: com.cobblemon.mod.common.pokemon.Pokemon? = null
+                    var transferToPC = false
+                    
+                    if (slotIndex < CobbleHomeMenu.HOME_GRID_SIZE) {
+                        // Home Grid Area (Glass or Pokemon)
+                        val slot = menu.slots[slotIndex]
+                        
+                        // Ignore clicks on Glass (vanilla Slots in this range are glass)
+                        // ... EXCEPT for our navigation buttons which we handled above
+                        
+                        if (slot is PokemonStorageSlot) {
+                            // This is a valid Pokemon slot
+                            val pokemonIndex = slot.index // Index in homeContainer (0-27)
+                            pokemonToTransfer = menu.getHomePokemon().getOrNull(pokemonIndex)
+                            transferToPC = true
+                        }
+                    } else if (slotIndex >= CobbleHomeMenu.PC_SLOTS_START_INDEX) {
+                        // PC Slot
+                        val pcIndex = slotIndex - CobbleHomeMenu.PC_SLOTS_START_INDEX
+                        if (pcIndex < CobbleHomeMenu.PC_SLOTS_PER_BOX) {
+                            pokemonToTransfer = menu.getPCPokemon().getOrNull(pcIndex)
+                            transferToPC = false
+                        }
+                    }
+                    
+                    if (pokemonToTransfer != null) {
+                         // IMPORTANT: When transferring FROM Home, we need the UUID logic to be robust
+                         // because we are viewing a slice.
+                         val packet =
+                                io.github.heitorcordeiromaciel.network.packets.TransferPokemonPacket(
+                                        pokemonUUID = pokemonToTransfer.uuid.toString(),
+                                        fromPC = !transferToPC
+                                )
+                        net.neoforged.neoforge.network.PacketDistributor.sendToServer(packet)
+                    }
                 }
+                // ALWAYS return true for our slots to consume the event
+                return true
             }
         }
-
+        
         return super.mouseClicked(mouseX, mouseY, button)
     }
 
-    override fun renderSlot(graphics: GuiGraphics, slot: net.minecraft.world.inventory.Slot) {
-        val slotIndex = slot.index
-
-        // Hide player inventory items (but still render the control buttons)
-        if (slotIndex >= CobbleHomeMenu.PLAYER_INV_START) {
-            // Only render control button slots
-            if (slotIndex == CobbleHomeMenu.HOTBAR_START + PREV_BOX_SLOT ||
-                            slotIndex == CobbleHomeMenu.HOTBAR_START + TOGGLE_SLOT ||
-                            slotIndex == CobbleHomeMenu.HOTBAR_START + NEXT_BOX_SLOT
-            ) {
-                // Control buttons are rendered separately, don't render the actual items
-                return
-            }
-            // Don't render other player inventory items
-            return
-        }
-
-        // Render Pokemon storage slots normally (they're empty ItemStacks anyway)
-        super.renderSlot(graphics, slot)
-    }
-
     override fun renderLabels(graphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        // Render title
-        graphics.drawString(font, title, titleLabelX, titleLabelY, 0x404040, false)
+        // Render labels
+        // Top Label (Home)
+        graphics.drawString(font, "Home Box ${menu.getCurrentHomeBox() + 1}", 8, 6, 0x404040, false)
 
-        // Render current box number if in PC view
-        if (menu.getViewMode() == CobbleHomeMenu.ViewMode.PC) {
-            val boxText = "Box ${menu.getCurrentBox() + 1}"
-            graphics.drawString(
-                    font,
-                    boxText,
-                    imageWidth - font.width(boxText) - 7,
-                    titleLabelY,
-                    0x404040,
-                    false
-            )
-        }
+        // Bottom Label (PC Box) - usually at y=128 approx
+        // Player inv label is usually at y=128ish.
+        // Our PC slots start at y=140. Label should be above.
+        val pcLabelY = 129
+        val boxText = "PC Box ${menu.getCurrentBox() + 1}"
+        graphics.drawString(font, boxText, 8, pcLabelY, 0x404040, false)
     }
 }

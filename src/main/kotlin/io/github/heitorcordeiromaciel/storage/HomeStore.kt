@@ -19,6 +19,10 @@ import net.minecraft.server.level.ServerPlayer
  */
 class HomeStore(override val uuid: UUID) : PokemonStore<HomePosition>() {
 
+    companion object {
+        const val MAX_CAPACITY = 1400 // 50 boxes * 28 slots
+    }
+
     private val pokemon = mutableListOf<Pokemon?>()
     private val changeObservable = SimpleObservable<Unit>()
     private val observerUUIDs = mutableSetOf<UUID>()
@@ -34,13 +38,19 @@ class HomeStore(override val uuid: UUID) : PokemonStore<HomePosition>() {
     }
 
     override fun getFirstAvailablePosition(): HomePosition? {
-        // Find first null slot
+        // Find first null slot within current size
         val index = pokemon.indexOfFirst { it == null }
-        if (index != -1) {
+        if (index != -1 && index < MAX_CAPACITY) {
             return HomePosition(index)
         }
-        // If no null slots, add to end
-        return HomePosition(pokemon.size)
+        
+        // If current size is less than capacity, we can append
+        if (pokemon.size < MAX_CAPACITY) {
+            return HomePosition(pokemon.size)
+        }
+        
+        // Store is full
+        return null
     }
 
     override fun getObservingPlayers(): Iterable<ServerPlayer> {
@@ -66,6 +76,11 @@ class HomeStore(override val uuid: UUID) : PokemonStore<HomePosition>() {
     }
 
     override fun setAtPosition(position: HomePosition, pokemon: Pokemon?) {
+        if (!isValidPosition(position)) {
+             Cobblemon.LOGGER.warn("Attempted to set pokemon at invalid position: ${position.index}")
+             return
+        }
+        
         // Expand list if necessary
         while (position.index >= this.pokemon.size) {
             this.pokemon.add(null)
@@ -75,19 +90,15 @@ class HomeStore(override val uuid: UUID) : PokemonStore<HomePosition>() {
     }
 
     override fun isValidPosition(position: HomePosition): Boolean {
-        return position.index >= 0
+        return position.index >= 0 && position.index < MAX_CAPACITY
     }
 
     override fun saveToNBT(nbt: CompoundTag, registryAccess: RegistryAccess): CompoundTag {
-        Cobblemon.LOGGER.info("=== HomeStore.saveToNBT CALLED ===")
-        Cobblemon.LOGGER.info("Saving ${getOccupiedCount()} Pokemon out of ${pokemon.size} slots")
-        
         nbt.putString("UUID", uuid.toString())
 
         val pokemonList = net.minecraft.nbt.ListTag()
         pokemon.forEachIndexed { index, poke ->
             if (poke != null) {
-                Cobblemon.LOGGER.info("Saving Pokemon at slot $index: ${poke.species.name}")
                 val pokemonTag = poke.saveToNBT(registryAccess)
                 pokemonTag.putInt("Slot", index)
                 pokemonList.add(pokemonTag)
@@ -95,33 +106,25 @@ class HomeStore(override val uuid: UUID) : PokemonStore<HomePosition>() {
         }
 
         nbt.put("Pokemon", pokemonList)
-        Cobblemon.LOGGER.info("Saved ${pokemonList.size} Pokemon to NBT")
         return nbt
     }
 
     override fun loadFromNBT(nbt: CompoundTag, registryAccess: RegistryAccess): PokemonStore<HomePosition> {
-        Cobblemon.LOGGER.info("=== HomeStore.loadFromNBT CALLED ===")
-        Cobblemon.LOGGER.info("NBT keys: ${nbt.allKeys}")
-        
         pokemon.clear()
 
         val uuidString = nbt.getString("UUID")
-        Cobblemon.LOGGER.info("Loading UUID: $uuidString")
         if (uuidString.isNotEmpty() && UUID.fromString(uuidString) != uuid) {
             Cobblemon.LOGGER.warn("HomeStore UUID mismatch during load")
         }
 
         val pokemonList = nbt.getList("Pokemon", 10) // 10 = CompoundTag
-        Cobblemon.LOGGER.info("Pokemon list size: ${pokemonList.size}")
         
         for (i in 0 until pokemonList.size) {
             val pokemonTag = pokemonList.getCompound(i)
             val slot = pokemonTag.getInt("Slot")
-            Cobblemon.LOGGER.info("Loading Pokemon from slot $slot")
 
             try {
                 val poke = Pokemon.loadFromNBT(registryAccess, pokemonTag)
-                Cobblemon.LOGGER.info("Loaded Pokemon: ${poke.species.name}")
 
                 // Expand list if necessary
                 while (slot >= pokemon.size) {
@@ -134,7 +137,6 @@ class HomeStore(override val uuid: UUID) : PokemonStore<HomePosition>() {
             }
         }
 
-        Cobblemon.LOGGER.info("Loaded ${getOccupiedCount()} Pokemon into store")
         initialize()
         return this
     }

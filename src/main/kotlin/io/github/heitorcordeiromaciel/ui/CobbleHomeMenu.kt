@@ -8,6 +8,7 @@ import net.minecraft.world.entity.player.Player
 import net.minecraft.world.inventory.AbstractContainerMenu
 import net.minecraft.world.inventory.Slot
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
 import net.neoforged.api.distmarker.Dist
 import net.neoforged.api.distmarker.OnlyIn
 
@@ -15,48 +16,108 @@ import net.neoforged.api.distmarker.OnlyIn
 @OnlyIn(Dist.CLIENT)
 class CobbleHomeMenu(
         containerId: Int,
-        private val playerInventory: Inventory
+        playerInventory: Inventory // We keep this to satisfy constructor, but don't bind slots
 ) : AbstractContainerMenu(MenuRegistry.COBBLEHOME_MENU_TYPE.get(), containerId) {
 
     companion object {
         const val SLOTS_PER_ROW = 9
-        const val ROWS = 5
-        const val TOTAL_SLOTS = SLOTS_PER_ROW * ROWS // 45 slots (5 rows x 9)
-        const val POKEMON_SLOTS_START = 0
-        const val PLAYER_INV_START = TOTAL_SLOTS
-        const val HOTBAR_START = PLAYER_INV_START + 27
+        // Home Storage (Top)
+        const val HOME_ROWS = 6
+        const val HOME_GRID_SIZE = SLOTS_PER_ROW * HOME_ROWS // 54 total grid slots (including glass)
+        // Inner storage grid is 7 cols x 4 rows
+        const val HOME_INNER_COLS = 7
+        const val HOME_INNER_ROWS = 4
+        const val TOTAL_HOME_SLOTS_PER_PAGE = HOME_INNER_COLS * HOME_INNER_ROWS // 28 active storage slots per page
+        const val TOTAL_HOME_SLOTS = 1400 // Matches HomeStore.MAX_CAPACITY
+
+        // PC Storage (Bottom - replaces player inventory area)
+        const val PC_ROWS = 3 // 3 main rows + 1 hotbar row = 4 total available
+        // PC slots start after the entire Home Grid (54 slots)
+        const val PC_SLOTS_START_INDEX = HOME_GRID_SIZE 
+        const val PC_SLOTS_PER_BOX = 30
+        
+        // Total slots in the menu (Home Grid + PC area)
+        // PC area is 4 rows * 9 cols = 36 slots
+        const val TOTAL_MENU_SLOTS = HOME_GRID_SIZE + (4 * SLOTS_PER_ROW) 
+        
+        // Control buttons will live in the last few slots of the PC area (hotbar row)
+        const val HOTBAR_ROW_START_INDEX = HOME_GRID_SIZE + (3 * SLOTS_PER_ROW)
+        const val PREV_BOX_SLOT_INDEX = HOTBAR_ROW_START_INDEX + 3
+        const val NEXT_BOX_SLOT_INDEX = HOTBAR_ROW_START_INDEX + 5
+        
+        // Home Navigation Indices (within the 54-slot grid)
+        // Row 5, Col 0 (Bottom Left) -> Prev Page
+        const val PREV_HOME_SLOT_INDEX = 45 
+        // Row 5, Col 8 (Bottom Right) -> Next Page
+        const val NEXT_HOME_SLOT_INDEX = 53
     }
 
-    private var viewMode = ViewMode.HOME
     private var currentPCBox = 0 // Track which PC box we're viewing
+    private var currentHomeBox = 0 // Track which Home box we're viewing (0-49)
     
-    // Virtual container for Pokemon storage slots (doesn't actually hold items)
-    private val pokemonContainer = SimpleContainer(TOTAL_SLOTS)
+    // Virtual container for Home storage slots (active pokemon - single page view)
+    private val homeContainer = SimpleContainer(TOTAL_HOME_SLOTS) // We use index mapping
+    
+    // Virtual container for Glass Panes (border)
+    private val glassContainer = SimpleContainer(1).apply {
+        val glassStack = ItemStack(Items.GRAY_STAINED_GLASS_PANE)
+        setItem(0, glassStack)
+    }
+    
+    // Virtual container for empty slots (navigation buttons)
+    private val navButtonContainer = SimpleContainer(1) // Empty by default
+
+    // Virtual container for PC storage slots (replacing inventory)
+    private val pcContainer = SimpleContainer(36)
 
     init {
-        // Add Pokemon storage slots (6 rows x 9 columns)
-        for (row in 0 until ROWS) {
+        // --- TOP SECTION: HOME STORAGE (with Glass Border & Buttons) ---
+        // Grid 9x6
+        var homeSlotIndex = 0 // This tracks position in grid (visually) 
+        var innerSlotCount = 0
+        
+        for (row in 0 until HOME_ROWS) {
             for (col in 0 until SLOTS_PER_ROW) {
-                val index = row * SLOTS_PER_ROW + col
-                addSlot(PokemonStorageSlot(pokemonContainer, index, 8 + col * 18, 18 + row * 18))
+                // Border Logic:
+                val isBorder = row == 0 || row == 5 || col == 0 || col == 8
+                val currentIndex = row * 9 + col
+                
+                if (currentIndex == PREV_HOME_SLOT_INDEX || currentIndex == NEXT_HOME_SLOT_INDEX) {
+                     // Navigation Button Slots - Bind to Empty Container so manual button render works without glass overlay
+                     addSlot(object : Slot(navButtonContainer, 0, 8 + col * 18, 18 + row * 18) {
+                        override fun mayPlace(stack: ItemStack): Boolean = false
+                        override fun mayPickup(player: Player): Boolean = false
+                    })
+                } else if (isBorder) {
+                    // Glass Border
+                    addSlot(object : Slot(glassContainer, 0, 8 + col * 18, 18 + row * 18) {
+                        override fun mayPlace(stack: ItemStack): Boolean = false
+                        override fun mayPickup(player: Player): Boolean = false
+                    })
+                } else {
+                    // Active Storage Slot (Inner 7x4)
+                    // We bind these to indices 0-27 of the dummy homeContainer
+                    addSlot(PokemonStorageSlot(homeContainer, innerSlotCount++, 8 + col * 18, 18 + row * 18))
+                }
             }
         }
 
-        // Add player inventory slots (3 rows)
+        // --- BOTTOM SECTION: PC STORAGE ---
+        // ... (unchanged)
         for (row in 0 until 3) {
             for (col in 0 until 9) {
-                addSlot(Slot(playerInventory, col + row * 9 + 9, 8 + col * 18, 140 + row * 18))
+                val index = col + row * 9
+                addSlot(PokemonStorageSlot(pcContainer, index, 8 + col * 18, 140 + row * 18))
             }
         }
 
-        // Add hotbar slots
         for (col in 0 until 9) {
-            addSlot(Slot(playerInventory, col, 8 + col * 18, 198))
+            val index = col + 27
+            addSlot(PokemonStorageSlot(pcContainer, index, 8 + col * 18, 198))
         }
     }
 
     override fun quickMoveStack(player: Player, index: Int): ItemStack {
-        // Disable shift-clicking
         return ItemStack.EMPTY
     }
 
@@ -68,22 +129,9 @@ class CobbleHomeMenu(
         super.removed(player)
     }
 
-    /** Toggles between HOME and PC view modes */
-    fun toggleViewMode() {
-        viewMode = when (viewMode) {
-            ViewMode.HOME -> ViewMode.PC
-            ViewMode.PC -> ViewMode.HOME
-        }
-        currentPCBox = 0 // Reset to first box when switching views
-        broadcastChanges()
-    }
-
-    /** Gets the current view mode */
-    fun getViewMode(): ViewMode = viewMode
-    
     /** Navigate to previous PC box */
     fun previousBox() {
-        if (viewMode == ViewMode.PC && currentPCBox > 0) {
+        if (currentPCBox > 0) {
             currentPCBox--
             broadcastChanges()
         }
@@ -91,47 +139,68 @@ class CobbleHomeMenu(
     
     /** Navigate to next PC box */
     fun nextBox() {
-        if (viewMode == ViewMode.PC) {
-            // TODO: Add max box limit based on actual PC box count
+        if (currentPCBox < 49) { // Max 50 boxes (0-49)
             currentPCBox++
             broadcastChanges()
         }
     }
     
-    /** Get current PC box number */
     fun getCurrentBox(): Int = currentPCBox
-
-    /** Gets the Pokémon to display based on current view mode */
-    fun getDisplayedPokemon(): List<com.cobblemon.mod.common.pokemon.Pokemon?> {
-        return when (viewMode) {
-            ViewMode.HOME -> {
-                val slots = HomeStorageManager.getHomeStore().getAllSlots()
-                com.cobblemon.mod.common.Cobblemon.LOGGER.debug(
-                        "CobbleHomeMenu: HOME view - ${slots.count { it != null }} Pokémon"
-                )
-                // Pad to at least TOTAL_SLOTS
-                slots + List(maxOf(0, TOTAL_SLOTS - slots.size)) { null }
-            }
-            ViewMode.PC -> {
-                val allPokemon = PCAccessor.getAllPCPokemon()
-                com.cobblemon.mod.common.Cobblemon.LOGGER.debug(
-                        "CobbleHomeMenu: PC view - ${allPokemon.size} Pokémon from cache"
-                )
-                // Get Pokemon for current box (54 per box)
-                val boxStart = currentPCBox * TOTAL_SLOTS
-                val boxEnd = boxStart + TOTAL_SLOTS
-                val boxPokemon = allPokemon.subList(
-                    boxStart.coerceAtMost(allPokemon.size),
-                    boxEnd.coerceAtMost(allPokemon.size)
-                )
-                // Pad to TOTAL_SLOTS
-                boxPokemon + List(maxOf(0, TOTAL_SLOTS - boxPokemon.size)) { null }
-            }
+    
+    // --- HOME PAGINATION ---
+    fun previousHomeBox() {
+        if (currentHomeBox > 0) {
+            currentHomeBox--
+        } else {
+            currentHomeBox = 49 // Loop to last page
         }
+        broadcastChanges()
+    }
+    
+    fun nextHomeBox() {
+        if (currentHomeBox < 49) {
+            currentHomeBox++
+        } else {
+            currentHomeBox = 0 // Loop to first page
+        }
+        broadcastChanges()
+    }
+    
+    fun getCurrentHomeBox(): Int = currentHomeBox
+
+    /** Gets the Pokémon to display for Home Storage (Top) - Current Page */
+    fun getHomePokemon(): List<com.cobblemon.mod.common.pokemon.Pokemon?> {
+        val allSlots = HomeStorageManager.getHomeStore().getAllSlots()
+        
+        val start = currentHomeBox * TOTAL_HOME_SLOTS_PER_PAGE
+        val end = start + TOTAL_HOME_SLOTS_PER_PAGE
+        
+        // Slice the list for the current page
+        val pageList = if (start < allSlots.size) {
+            allSlots.subList(start, end.coerceAtMost(allSlots.size))
+        } else {
+            emptyList()
+        }
+        
+        return pageList + List(maxOf(0, TOTAL_HOME_SLOTS_PER_PAGE - pageList.size)) { null }
     }
 
-    enum class ViewMode {
-        HOME,
-        PC
+    /** Gets the Pokémon to display for PC Storage (Bottom) - Current Box */
+    fun getPCPokemon(): List<com.cobblemon.mod.common.pokemon.Pokemon?> {
+        val allPokemon = PCAccessor.getAllPCPokemon()
+        
+        val boxStart = currentPCBox * PC_SLOTS_PER_BOX // Standard 30 per box
+        val boxEnd = boxStart + PC_SLOTS_PER_BOX
+        
+        val pcList = if (boxStart < allPokemon.size) {
+            allPokemon.subList(
+                boxStart,
+                boxEnd.coerceAtMost(allPokemon.size)
+            )
+        } else {
+            emptyList()
+        }
+        
+        return pcList + List(maxOf(0, 36 - pcList.size)) { null }
     }
 }
