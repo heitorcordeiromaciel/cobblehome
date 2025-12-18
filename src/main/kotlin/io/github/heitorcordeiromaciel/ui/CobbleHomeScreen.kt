@@ -252,8 +252,6 @@ class CobbleHomeScreen(menu: CobbleHomeMenu, playerInventory: Inventory, title: 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
         // Handle slot clicks
         val hoveredSlot = slotUnderMouse
-        val x = (width - imageWidth) / 2
-        val y = (height - imageHeight) / 2
 
         if (hoveredSlot != null) { 
             val slotIndex = hoveredSlot.index // This is the index in menu.slots list
@@ -329,13 +327,8 @@ class CobbleHomeScreen(menu: CobbleHomeMenu, playerInventory: Inventory, title: 
     }
 
     override fun renderLabels(graphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        // Render labels
-        // Top Label (Home)
         graphics.drawString(font, "Home Box ${menu.getCurrentHomeBox() + 1}", 8, 6, 0x404040, false)
 
-        // Bottom Label (PC Box) - usually at y=128 approx
-        // Player inv label is usually at y=128ish.
-        // Our PC slots start at y=140. Label should be above.
         val pcLabelY = 129
         val boxText = "PC Box ${menu.getCurrentBox() + 1}"
         graphics.drawString(font, boxText, 8, pcLabelY, 0x404040, false)

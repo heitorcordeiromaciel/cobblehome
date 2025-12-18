@@ -14,6 +14,7 @@ import net.neoforged.api.distmarker.OnlyIn
 import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent
+import io.github.heitorcordeiromaciel.config.CobbleHomeConfig
 
 /**
  * CLIENT-SIDE storage manager for CobbleHome. Stores Pokémon in client's
@@ -47,10 +48,12 @@ object HomeStorageManager {
         }
     }
 
-    /** Reset on logout */
-    @SubscribeEvent
-    fun onClientLogout(event: ClientPlayerNetworkEvent.LoggingOut) {
-        // No need to do anything here, data is saved on each transfer
+    private fun resolveHomeDirectory(): File {
+        return if (CobbleHomeConfig.VALUES.enableGlobalHome.get()) {
+            File(System.getProperty("user.home"), ".cobblehome")
+        } else {
+            File(Minecraft.getInstance().gameDirectory, "config/cobblehome")
+        }
     }
 
     /** Initializes the storage manager and loads existing data */
@@ -58,14 +61,14 @@ object HomeStorageManager {
         if (initialized) return
 
         // Get client's config directory
-        val configDir = File(Minecraft.getInstance().gameDirectory, "config")
-        val cobblehomeDir = File(configDir, "cobblehome")
+        val baseDir = resolveHomeDirectory()
 
-        if (!cobblehomeDir.exists()) {
-            cobblehomeDir.mkdirs()
+        if (!baseDir.exists()) {
+            baseDir.mkdirs()
         }
 
-        storageFile = File(cobblehomeDir, "home_storage.dat")
+        storageFile = File(baseDir, "home_storage.dat")
+
 
         // Create empty store initially
         homeStore = HomeStore(UUID.fromString("00000000-0000-0000-0000-000000000001"))
