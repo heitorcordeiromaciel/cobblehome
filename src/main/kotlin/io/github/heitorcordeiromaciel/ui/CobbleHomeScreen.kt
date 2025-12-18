@@ -15,8 +15,7 @@ class CobbleHomeScreen(menu: CobbleHomeMenu, playerInventory: Inventory, title: 
         AbstractContainerScreen<CobbleHomeMenu>(menu, playerInventory, title) {
 
     companion object {
-        private val BACKGROUND_TEXTURE =
-                ResourceLocation.withDefaultNamespace("textures/gui/container/generic_54.png")
+        private val BACKGROUND_TEXTURE = ResourceLocation.fromNamespaceAndPath("cobblehome", "textures/gui/cobblehome.png")
 
         private const val TEXTURE_WIDTH = 176
         private const val TEXTURE_HEIGHT = 222
