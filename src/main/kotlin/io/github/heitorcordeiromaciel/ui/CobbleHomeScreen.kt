@@ -114,7 +114,7 @@ class CobbleHomeScreen(menu: CobbleHomeMenu, playerInventory: Inventory, title: 
             tooltipLines.add(Component.literal("Species: ${pokemon.species.name}"))
             
             // Location hint
-            if (slotIndex < CobbleHomeMenu.TOTAL_HOME_SLOTS) {
+            if (slotIndex < CobbleHomeMenu.HOME_GRID_SIZE) {
                  tooltipLines.add(Component.literal("Home Page ${menu.getCurrentHomeBox() + 1}").withStyle(net.minecraft.ChatFormatting.GREEN))
             } else {
                  tooltipLines.add(Component.literal("PC Box ${menu.getCurrentBox() + 1}").withStyle(net.minecraft.ChatFormatting.AQUA))

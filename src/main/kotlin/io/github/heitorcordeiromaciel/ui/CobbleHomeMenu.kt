@@ -27,9 +27,8 @@ class CobbleHomeMenu(
         // Inner storage grid is 7 cols x 4 rows
         const val HOME_INNER_COLS = 7
         const val HOME_INNER_ROWS = 4
-        const val TOTAL_HOME_SLOTS_PER_PAGE = HOME_INNER_COLS * HOME_INNER_ROWS // 28 active storage slots per page
-        const val TOTAL_HOME_SLOTS = 1400 // Matches HomeStore.MAX_CAPACITY
-
+        const val TOTAL_HOME_SLOTS_PER_PAGE = HOME_GRID_SIZE // 54 total grid slots per page
+        const val TOTAL_HOME_SLOTS = 2700 // Matches HomeStore.MAX_CAPACITY (50 boxes * 54)
         // PC Storage (Bottom - replaces player inventory area)
         const val PC_ROWS = 3 // 3 main rows + 1 hotbar row = 4 total available
         // PC slots start after the entire Home Grid (54 slots)
@@ -71,18 +70,14 @@ class CobbleHomeMenu(
     private val pcContainer = SimpleContainer(36)
 
     init {
-        // --- TOP SECTION: HOME STORAGE (with Glass Border & Buttons) ---
         // Grid 9x6
-        var homeSlotIndex = 0 // This tracks position in grid (visually) 
-        var innerSlotCount = 0
-        
         for (row in 0 until HOME_ROWS) {
             for (col in 0 until SLOTS_PER_ROW) {
                 // Border Logic:
                 val isBorder = row == 0 || row == 5 || col == 0 || col == 8
-                val currentIndex = row * 9 + col
+                val gridIndex = row * 9 + col
                 
-                if (currentIndex == PREV_HOME_SLOT_INDEX || currentIndex == NEXT_HOME_SLOT_INDEX) {
+                if (gridIndex == PREV_HOME_SLOT_INDEX || gridIndex == NEXT_HOME_SLOT_INDEX) {
                      // Navigation Button Slots - Bind to Empty Container so manual button render works without glass overlay
                      addSlot(object : Slot(navButtonContainer, 0, 8 + col * 18, 18 + row * 18) {
                         override fun mayPlace(stack: ItemStack): Boolean = false
@@ -96,8 +91,9 @@ class CobbleHomeMenu(
                     })
                 } else {
                     // Active Storage Slot (Inner 7x4)
-                    // We bind these to indices 0-27 of the dummy homeContainer
-                    addSlot(PokemonStorageSlot(homeContainer, innerSlotCount++, 8 + col * 18, 18 + row * 18))
+                    // We bind these to the exact gridIndex of the homeContainer for a 1:1 mapping.
+                    // This way, storage slot 10 in a page is always the first inner slot.
+                    addSlot(PokemonStorageSlot(homeContainer, gridIndex, 8 + col * 18, 18 + row * 18))
                 }
             }
         }

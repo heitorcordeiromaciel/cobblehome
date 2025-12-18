@@ -24,7 +24,8 @@ class Cobblehome(container: ModContainer) {
 
     container.registerConfig(
       ModConfig.Type.CLIENT,
-      CobbleHomeConfig.SPEC
+      CobbleHomeConfig.SPEC,
+      "cobblehome/cobblehome.toml"
     )
 
     Cobblemon.LOGGER.info("CobbleHome initialized (client-side storage)")

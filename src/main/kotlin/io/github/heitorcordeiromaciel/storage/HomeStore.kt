@@ -20,7 +20,17 @@ import net.minecraft.server.level.ServerPlayer
 class HomeStore(override val uuid: UUID) : PokemonStore<HomePosition>() {
 
     companion object {
-        const val MAX_CAPACITY = 1400 // 50 boxes * 28 slots
+        const val MAX_CAPACITY = 2700 // 50 boxes * 54 slots (9x6)
+    }
+
+    /**
+     * Helper to determine if a slot index corresponds to a border glass pane in the 9x6 UI grid.
+     */
+    private fun isBorderSlot(index: Int): Boolean {
+        val gridPos = index % 54
+        val row = gridPos / 9
+        val col = gridPos % 9
+        return row == 0 || row == 5 || col == 0 || col == 8
     }
 
     private val pokemon = mutableListOf<Pokemon?>()
@@ -38,18 +48,17 @@ class HomeStore(override val uuid: UUID) : PokemonStore<HomePosition>() {
     }
 
     override fun getFirstAvailablePosition(): HomePosition? {
-        // Find first null slot within current size
-        val index = pokemon.indexOfFirst { it == null }
-        if (index != -1 && index < MAX_CAPACITY) {
-            return HomePosition(index)
+        // Find first non-border null slot within MAX_CAPACITY
+        for (i in 0 until MAX_CAPACITY) {
+            if (isBorderSlot(i)) continue
+            
+            if (i < pokemon.size) {
+                if (pokemon[i] == null) return HomePosition(i)
+            } else {
+                return HomePosition(i)
+            }
         }
         
-        // If current size is less than capacity, we can append
-        if (pokemon.size < MAX_CAPACITY) {
-            return HomePosition(pokemon.size)
-        }
-        
-        // Store is full
         return null
     }
 
