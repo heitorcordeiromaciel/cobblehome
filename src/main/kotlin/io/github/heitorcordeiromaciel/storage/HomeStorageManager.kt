@@ -2,19 +2,21 @@ package io.github.heitorcordeiromaciel.storage
 
 import com.cobblemon.mod.common.Cobblemon
 import com.cobblemon.mod.common.pokemon.Pokemon
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
+import io.github.heitorcordeiromaciel.config.CobbleHomeConfig
 import java.io.File
+import java.io.FileReader
+import java.io.FileWriter
 import java.io.IOException
 import java.util.UUID
 import net.minecraft.client.Minecraft
-import net.minecraft.nbt.CompoundTag
-import net.minecraft.nbt.NbtAccounter
-import net.minecraft.nbt.NbtIo
 import net.neoforged.api.distmarker.Dist
 import net.neoforged.api.distmarker.OnlyIn
 import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent
-import io.github.heitorcordeiromaciel.config.CobbleHomeConfig
 
 /**
  * CLIENT-SIDE storage manager for CobbleHome. Stores Pokémon in client's
@@ -32,14 +34,16 @@ object HomeStorageManager {
     @SubscribeEvent
     fun onClientLogin(event: ClientPlayerNetworkEvent.LoggingIn) {
         initialize()
-        
+
         // Always load from disk when joining a world
         if (storageFile.exists()) {
             try {
                 Cobblemon.LOGGER.info("Loading Home storage from disk...")
                 val loadedStore = loadFromFile()
                 homeStore = loadedStore
-                Cobblemon.LOGGER.info("✅ Loaded Home storage with ${homeStore.getOccupiedCount()} Pokemon")
+                Cobblemon.LOGGER.info(
+                        "✅ Loaded Home storage with ${homeStore.getOccupiedCount()} Pokemon"
+                )
             } catch (e: Exception) {
                 Cobblemon.LOGGER.error("Failed to load Home storage on login", e)
             }
@@ -67,8 +71,7 @@ object HomeStorageManager {
             baseDir.mkdirs()
         }
 
-        storageFile = File(baseDir, "home_storage.dat")
-
+        storageFile = File(baseDir, "home_storage.json")
 
         // Create empty store initially
         homeStore = HomeStore(UUID.fromString("00000000-0000-0000-0000-000000000001"))
@@ -119,22 +122,24 @@ object HomeStorageManager {
         }
 
         try {
-            val nbt = CompoundTag()
+            val json = JsonObject()
             val registryAccess =
                     Minecraft.getInstance().connection?.registryAccess()
                             ?: run {
-                                Cobblemon.LOGGER.warn("Cannot save Home storage: no registry access")
+                                Cobblemon.LOGGER.warn(
+                                        "Cannot save Home storage: no registry access"
+                                )
                                 return
                             }
 
-            homeStore.saveToNBT(nbt, registryAccess)
-            
+            homeStore.saveToJSON(json, registryAccess)
+
             // Ensure parent directory exists
             storageFile.parentFile?.mkdirs()
-            
+
             // Write to file
-            NbtIo.writeCompressed(nbt, storageFile.toPath())
-            
+            val gson = GsonBuilder().setPrettyPrinting().create()
+            FileWriter(storageFile).use { writer -> gson.toJson(json, writer) }
         } catch (e: IOException) {
             Cobblemon.LOGGER.error("Failed to save CobbleHome client storage", e)
         } catch (e: Exception) {
@@ -145,17 +150,21 @@ object HomeStorageManager {
     /** Loads the home store from disk */
     private fun loadFromFile(): HomeStore {
         return try {
-            val nbt = NbtIo.readCompressed(storageFile.toPath(), NbtAccounter.unlimitedHeap())
             val registryAccess =
                     Minecraft.getInstance().connection?.registryAccess()
                             ?: throw IllegalStateException("Cannot load without registry access")
 
+            val json =
+                    FileReader(storageFile).use { reader ->
+                        JsonParser.parseReader(reader).asJsonObject
+                    }
+
             val uuidString =
-                    if (nbt.contains("UUID")) nbt.getString("UUID")
+                    if (json.has("UUID")) json.get("UUID").asString
                     else "00000000-0000-0000-0000-000000000001"
             val uuid = UUID.fromString(uuidString)
             val store = HomeStore(uuid)
-            store.loadFromNBT(nbt, registryAccess)
+            store.loadFromJSON(json, registryAccess)
 
             Cobblemon.LOGGER.info(
                     "CobbleHome client storage loaded successfully with ${store.getOccupiedCount()} Pokémon"
