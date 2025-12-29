@@ -85,9 +85,30 @@ class HomeStore(override val uuid: UUID) : PokemonStore<HomePosition>() {
         }
     }
 
+    override fun add(pokemon: Pokemon): Boolean {
+        val position = getFirstAvailablePosition() ?: return false
+        setAtPosition(position, pokemon)
+        return true
+    }
+
+    override fun remove(pokemon: Pokemon): Boolean {
+        val index = this.pokemon.indexOf(pokemon)
+        if (index != -1) {
+            this.pokemon[index] = null
+            changeObservable.emit(Unit)
+            return true
+        }
+        return false
+    }
+
     override fun setAtPosition(position: HomePosition, pokemon: Pokemon?) {
         if (!isValidPosition(position)) {
             Cobblemon.LOGGER.warn("Attempted to set pokemon at invalid position: ${position.index}")
+            return
+        }
+
+        if (isBorderSlot(position.index)) {
+            Cobblemon.LOGGER.warn("Attempted to set pokemon at border slot: ${position.index}")
             return
         }
 
