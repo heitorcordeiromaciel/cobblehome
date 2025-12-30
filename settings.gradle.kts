@@ -1,4 +1,4 @@
-rootProject.name = "cobblehome" //By default, this is how your built jar is called
+rootProject.name = "cobblemon-vault" //By default, this is how your built jar is called
 
 pluginManagement {
     repositories {

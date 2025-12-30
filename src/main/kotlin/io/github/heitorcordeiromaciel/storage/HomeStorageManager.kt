@@ -23,7 +23,6 @@ import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent
  * .minecraft/config/cobblehome/home_storage.dat
  */
 @OnlyIn(Dist.CLIENT)
-@EventBusSubscriber(modid = "cobblehome_neoforge", value = [Dist.CLIENT])
 object HomeStorageManager {
 
     private lateinit var homeStore: HomeStore
@@ -31,8 +30,8 @@ object HomeStorageManager {
     private var initialized = false
 
     /** Initialize on client login */
-    @SubscribeEvent
-    fun onClientLogin(event: ClientPlayerNetworkEvent.LoggingIn) {
+    /** Loads the home storage from disk */
+    fun load() {
         initialize()
 
         // Always load from disk when joining a world
@@ -54,9 +53,10 @@ object HomeStorageManager {
 
     private fun resolveHomeDirectory(): File {
         return if (CobbleHomeConfig.VALUES.enableGlobalHome.get()) {
-            File(System.getProperty("user.home"), ".cobblehome")
+            val appData = System.getenv("APPDATA")
+            File(appData, "PokemonVault")
         } else {
-            File(Minecraft.getInstance().gameDirectory, "config/cobblehome")
+            File(Minecraft.getInstance().gameDirectory, "config/cobblemon-vault")
         }
     }
 
@@ -71,7 +71,7 @@ object HomeStorageManager {
             baseDir.mkdirs()
         }
 
-        storageFile = File(baseDir, "home_storage.json")
+        storageFile = File(baseDir, "vault.json")
 
         // Create empty store initially
         homeStore = HomeStore(UUID.fromString("00000000-0000-0000-0000-000000000001"))

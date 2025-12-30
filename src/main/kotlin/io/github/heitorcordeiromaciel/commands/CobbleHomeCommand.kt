@@ -13,7 +13,7 @@ import net.neoforged.neoforge.network.PacketDistributor
 object CobbleHomeCommand {
 
     fun register(dispatcher: CommandDispatcher<CommandSourceStack>) {
-        dispatcher.register(Commands.literal("cobblehome").executes { context -> execute(context) })
+        dispatcher.register(Commands.literal("vault").executes { context -> execute(context) })
     }
 
     private fun execute(context: CommandContext<CommandSourceStack>): Int {

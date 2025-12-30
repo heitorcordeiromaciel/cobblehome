@@ -38,6 +38,9 @@ data class OpenUIPacket(val dummy: Boolean = true) : CustomPacketPayload {
                 val minecraft = Minecraft.getInstance()
                 val player = minecraft.player ?: return@enqueueWork
 
+                // Load storage from disk to ensure we have latest data
+                io.github.heitorcordeiromaciel.storage.HomeStorageManager.load()
+
                 // Create and open the menu client-side
                 val menu = CobbleHomeMenu(
                         0, // containerId - will be assigned by Minecraft
