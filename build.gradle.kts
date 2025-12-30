@@ -32,6 +32,9 @@ architectury {
 
 loom {
     silentMojangMappingsLicense()
+    neoForge {
+        accessTransformer(file("src/main/resources/META-INF/accesstransformer.cfg"))
+    }
 }
 
 repositories {

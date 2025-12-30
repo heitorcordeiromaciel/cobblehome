@@ -26,13 +26,9 @@ class HomeStore(override val uuid: UUID) : PokemonStore<HomePosition>() {
 
     /**
      * Helper to determine if a slot index corresponds to a border glass pane in the 9x6 UI grid.
+     * REMOVED: We now use all 54 slots.
      */
-    private fun isBorderSlot(index: Int): Boolean {
-        val gridPos = index % 54
-        val row = gridPos / 9
-        val col = gridPos % 9
-        return row == 0 || row == 5 || col == 0 || col == 8
-    }
+    // private fun isBorderSlot(index: Int): Boolean { ... }
 
     private val pokemon = mutableListOf<Pokemon?>()
     private val changeObservable = SimpleObservable<Unit>()
@@ -49,10 +45,8 @@ class HomeStore(override val uuid: UUID) : PokemonStore<HomePosition>() {
     }
 
     override fun getFirstAvailablePosition(): HomePosition? {
-        // Find first non-border null slot within MAX_CAPACITY
+        // Find first null slot within MAX_CAPACITY (No border restrictions)
         for (i in 0 until MAX_CAPACITY) {
-            if (isBorderSlot(i)) continue
-
             if (i < pokemon.size) {
                 if (pokemon[i] == null) return HomePosition(i)
             } else {
@@ -107,10 +101,13 @@ class HomeStore(override val uuid: UUID) : PokemonStore<HomePosition>() {
             return
         }
 
+        // Removed border check
+        /*
         if (isBorderSlot(position.index)) {
             Cobblemon.LOGGER.warn("Attempted to set pokemon at border slot: ${position.index}")
             return
         }
+        */
 
         // Expand list if necessary
         while (position.index >= this.pokemon.size) {
