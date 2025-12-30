@@ -326,7 +326,7 @@ class CobbleHomeScreen(menu: CobbleHomeMenu, playerInventory: Inventory, title: 
     }
 
     override fun renderLabels(graphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        graphics.drawString(font, "Home Box ${menu.getCurrentHomeBox() + 1}", 8, 6, 0x404040, false)
+        graphics.drawString(font, "Vault Box ${menu.getCurrentHomeBox() + 1}", 8, 6, 0x404040, false)
 
         val pcLabelY = 129
         val boxText = "PC Box ${menu.getCurrentBox() + 1}"
