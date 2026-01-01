@@ -282,6 +282,8 @@ class CobbleHomeScreen(menu: CobbleHomeMenu, playerInventory: Inventory, title: 
                     return true
                 }
             }
+            
+            return true
         }
         
         return super.mouseClicked(mouseX, mouseY, button)

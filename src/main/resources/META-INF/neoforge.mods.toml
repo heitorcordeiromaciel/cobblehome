@@ -6,7 +6,7 @@ license = "MIT License"
 [[mods]]
 modId = "cobblehome_neoforge"
 version = "${version}"
-displayName = "Cobblehome"
+displayName = "Cobblemon Vault"
 authors = "Heitor Maciel"
 description = '''
 Simple Client-Side Home for Cobblemon
